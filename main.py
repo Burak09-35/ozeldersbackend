@@ -20,6 +20,7 @@ class UserTable(Base):
     adSoyad = Column(String)
     email = Column(String, unique=True)
     rol = Column(String)  # öğretmen / öğrenci
+    password = Column(String)
 
 class LessonTable(Base):
     __tablename__ = "lessons"
@@ -55,6 +56,12 @@ class LessonResponse(LessonCreate):
     class Config:
         from_attributes = True
 
+class UserCreate(BaseModel):
+    adSoyad: str
+    email: str
+    password: str # Gerçek projede bu hash'lenmeli!
+    rol: str
+
 # 4. FASTAPI BAŞLATMA
 app = FastAPI()
 
@@ -87,6 +94,24 @@ def create_lesson(lesson: LessonCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_lesson)
     return db_lesson
+
+@app.post("/register")
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(UserTable).filter(UserTable.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
+    
+    new_user = UserTable(
+        uid=f"u_{datetime.now().timestamp()}", 
+        adSoyad=user.adSoyad,
+        email=user.email,
+        password=user.password, # ŞİFREYİ BURADA KAYDEDİYORUZ
+        rol=user.rol
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "Kayit basairili"}
 
 @app.put("/lessons/{lesson_id}")
 def update_lesson(lesson_id: int, updated_data: dict, db: Session = Depends(get_db)):
