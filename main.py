@@ -62,6 +62,10 @@ class UserCreate(BaseModel):
     password: str # Gerçek projede bu hash'lenmeli!
     rol: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 # 4. FASTAPI BAŞLATMA
 app = FastAPI()
 
@@ -83,9 +87,13 @@ def get_db():
 
 # 5. ENDPOINTLER (API Uç Noktaları)
 
-@app.get("/lessons", response_model=List[LessonResponse])
-def get_lessons(db: Session = Depends(get_db)):
-    return db.query(LessonTable).all()
+@app.get("/lessons")
+def get_lessons(user_id: str, db: Session = Depends(get_db)):
+    # Veritabanında ogretmenId veya ogrenciId'si gelen user_id'ye eşit olanları getir
+    lessons = db.query(LessonTable).filter(
+        (LessonTable.ogretmenId == user_id) | (LessonTable.ogrenciId == user_id)
+    ).all()
+    return lessons
 
 @app.post("/lessons", response_model=LessonResponse)
 def create_lesson(lesson: LessonCreate, db: Session = Depends(get_db)):
@@ -112,6 +120,26 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return {"message": "Kayit basairili"}
+
+@app.post("/login")
+def login_user(req: LoginRequest, db: Session = Depends(get_db)):
+    # Kullanıcıyı bul
+    user = db.query(UserTable).filter(UserTable.email == req.email).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    
+    if user.password != req.password:
+        raise HTTPException(status_code=401, detail="Hatalı şifre")
+    
+    return {
+        "message": "Giriş başarılı",
+        "user": {
+            "uid": user.uid,
+            "adSoyad": user.adSoyad,
+            "rol": user.rol
+        }
+    }
 
 @app.put("/lessons/{lesson_id}")
 def update_lesson(lesson_id: int, updated_data: dict, db: Session = Depends(get_db)):
