@@ -1,0 +1,13 @@
+şimdi öğretmen öğrenci ayrımını uygulamada da yapalım
+
+
+
+sanırım ana menüde bir ayrım yapmamıza gerek yok öğrenci de öğretmen de aynı menüyü kullanıcak belki öğretmene öğrencilerin bilgilerini görmesi için ayrı bir sayfa ekleriz
+
+
+
+öğrencilerin ders kontrol sayfasını baya değiştirmemiz lazım mesela;
+
+şu anda öğretmenler takvimi açınca ders ekleyebiliyor bunun öğrencilerde olmaması lazım
+
+öğretmenlere ders silme koyarız bir de öğrenciler öğretmenlere ders ekleme silme gibi istekler atabilecek onu da daha sonra yaparız aklımızda bulunsun
