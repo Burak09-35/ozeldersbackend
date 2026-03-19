@@ -47,7 +47,7 @@ class _AnaMenuState extends State<AnaMenu> {
     // --- KAVŞAK MANTIĞI (ROUTER) ---
     // Kullanıcının rolüne göre gideceği takvim sayfasını önceden belirliyoruz.
     Widget gidecegiTakvimSayfasi = (userRole == "öğretmen")
-        ? const OgretmenTakvimi()
+        ? OgretmenTakvimi()
         : const OgrenciTakvimi();
 
     return Scaffold(
