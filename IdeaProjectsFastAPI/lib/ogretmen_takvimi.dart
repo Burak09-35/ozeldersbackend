@@ -4,12 +4,12 @@ import 'package:provider/provider.dart';
 import 'ders_provider.dart';
 import 'ders_detay_sayfasi.dart';
 
-class OzelDersTakvimi extends StatefulWidget {
+class OgretmenTakvimi extends StatefulWidget {
   @override
   _OzelDersTakvimiState createState() => _OzelDersTakvimiState();
 }
 
-class _OzelDersTakvimiState extends State<OzelDersTakvimi> {
+class _OzelDersTakvimiState extends State<OgretmenTakvimi> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;

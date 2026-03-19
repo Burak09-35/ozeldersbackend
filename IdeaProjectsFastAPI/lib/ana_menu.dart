@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ders_provider.dart';
-import 'ozel_ders_takvimi.dart';
+
+// Taze böldüğümüz ve ismini güncellediğimiz sayfaları içe aktarıyoruz
+import 'ogretmen_takvimi.dart';
+import 'ogrenci_takvimi.dart';
 import 'ogrenci_listesi_sayfasi.dart';
 
 class AnaMenu extends StatefulWidget {
@@ -14,6 +17,7 @@ class AnaMenu extends StatefulWidget {
 
 class _AnaMenuState extends State<AnaMenu> {
   String userName = "";
+  String userRole = "öğrenci"; // Güvenlik için varsayılan rol öğrenci
 
   @override
   void initState() {
@@ -24,7 +28,7 @@ class _AnaMenuState extends State<AnaMenu> {
       Provider.of<DersProvider>(context, listen: false).dersleriYukle();
     });
 
-    // 2. Kullanıcının adını Shared Preferences'tan alıp ekrana yazdıralım
+    // 2. Kullanıcının adını ve rolünü Shared Preferences'tan alalım
     _kullaniciBilgileriniGetir();
   }
 
@@ -32,24 +36,51 @@ class _AnaMenuState extends State<AnaMenu> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userName = prefs.getString('user_name') ?? "Kullanıcı";
+      // Rol bilgisini hafızadan çekiyoruz, kayıt ekranında bunu set etmemiz gerekecek
+      userRole = prefs.getString('user_role') ?? "öğrenci";
     });
   }
 
   @override
   Widget build(BuildContext context) {
+
+    // --- KAVŞAK MANTIĞI (ROUTER) ---
+    // Kullanıcının rolüne göre gideceği takvim sayfasını önceden belirliyoruz.
+    Widget gidecegiTakvimSayfasi = (userRole == "öğretmen")
+        ? const OgretmenTakvimi()
+        : const OgrenciTakvimi();
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text("Hoş geldin, $userName"), // Artık ismin burada görünecek!
+        title: Text("Hoş geldin, $userName"),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            _menuButon(context, "Takvim Görünümü", Icons.calendar_today, Colors.indigo, OzelDersTakvimi()),
+            // 1. TAKVİM BUTONU (Herkes görür ama herkes farklı yere gider)
+            _menuButon(
+                context,
+                "Ders Programım",
+                Icons.calendar_today,
+                Colors.indigo,
+                gidecegiTakvimSayfasi // Kavşak değişkenimizi buraya verdik
+            ),
+
             const SizedBox(height: 20),
-            _menuButon(context, "Öğrenci Bazlı Liste", Icons.people, Colors.orange, const OgrenciListesiSayfasi()),
+
+            // 2. ÖĞRENCİ LİSTESİ BUTONU (Sadece Öğretmenler Görür)
+            // Dart dilindeki bu efsanevi 'if' kullanımı sayesinde widget'ı tamamen gizliyoruz
+            if (userRole == "öğretmen")
+              _menuButon(
+                  context,
+                  "Öğrencilerim",
+                  Icons.people,
+                  Colors.orange,
+                  const OgrenciListesiSayfasi()
+              ),
           ],
         ),
       ),
