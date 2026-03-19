@@ -19,6 +19,7 @@ class UserTable(Base):
     uid = Column(String, primary_key=True, index=True)
     adSoyad = Column(String)
     email = Column(String, unique=True)
+    telefon = Column(String, unique=True, index=True) # YENİ EKLENDİ
     rol = Column(String)  # öğretmen / öğrenci
     password = Column(String)
 
@@ -35,6 +36,13 @@ class LessonTable(Base):
     dakika = Column(Integer)
     odemeAlindi = Column(Boolean, default=False)
     katilimTamamlandi = Column(Boolean, default=False)
+
+# YENİ EKLENEN KÖPRÜ TABLO (Öğretmen-Öğrenci İlişkisi)
+class OgretmenOgrenciLink(Base):
+    __tablename__ = "ogretmen_ogrenci_link"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    ogretmenId = Column(String, index=True)
+    ogrenciId = Column(String, index=True)
 
 Base.metadata.create_all(bind=engine)
 
@@ -59,12 +67,17 @@ class LessonResponse(LessonCreate):
 class UserCreate(BaseModel):
     adSoyad: str
     email: str
+    telefon: str # YENİ EKLENDİ
     password: str # Gerçek projede bu hash'lenmeli!
     rol: str
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class OgrenciEkleRequest(BaseModel):
+    ogretmenId: str
+    ogrenciTelefon: str
 
 # 4. FASTAPI BAŞLATMA
 app = FastAPI()
@@ -89,7 +102,6 @@ def get_db():
 
 @app.get("/lessons")
 def get_lessons(user_id: str, db: Session = Depends(get_db)):
-    # Veritabanında ogretmenId veya ogrenciId'si gelen user_id'ye eşit olanları getir
     lessons = db.query(LessonTable).filter(
         (LessonTable.ogretmenId == user_id) | (LessonTable.ogrenciId == user_id)
     ).all()
@@ -105,30 +117,33 @@ def create_lesson(lesson: LessonCreate, db: Session = Depends(get_db)):
 
 @app.post("/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(UserTable).filter(UserTable.email == user.email).first()
-    if db_user:
+    # Hem email hem de telefon benzersiz olmalı
+    db_user_email = db.query(UserTable).filter(UserTable.email == user.email).first()
+    if db_user_email:
         raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
+        
+    db_user_tel = db.query(UserTable).filter(UserTable.telefon == user.telefon).first()
+    if db_user_tel:
+        raise HTTPException(status_code=400, detail="Bu telefon numarası zaten kayıtlı")
     
     new_user = UserTable(
         uid=f"u_{datetime.now().timestamp()}", 
         adSoyad=user.adSoyad,
         email=user.email,
-        password=user.password, # ŞİFREYİ BURADA KAYDEDİYORUZ
+        telefon=user.telefon,
+        password=user.password, 
         rol=user.rol
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "Kayit basairili"}
+    return {"message": "Kayıt başarılı", "uid": new_user.uid}
 
 @app.post("/login")
 def login_user(req: LoginRequest, db: Session = Depends(get_db)):
-    # Kullanıcıyı bul
     user = db.query(UserTable).filter(UserTable.email == req.email).first()
-    
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-    
     if user.password != req.password:
         raise HTTPException(status_code=401, detail="Hatalı şifre")
     
@@ -137,9 +152,57 @@ def login_user(req: LoginRequest, db: Session = Depends(get_db)):
         "user": {
             "uid": user.uid,
             "adSoyad": user.adSoyad,
-            "rol": user.rol
+            "rol": user.rol,
+            "telefon": user.telefon
         }
     }
+
+# --- YENİ EKLENEN ENDPOINTLER ---
+
+@app.post("/ogrenci_ekle")
+def ogrenci_ekle(req: OgrenciEkleRequest, db: Session = Depends(get_db)):
+    # 1. Telefon numarasından öğrenciyi bul
+    ogrenci = db.query(UserTable).filter(UserTable.telefon == req.ogrenciTelefon).first()
+    
+    if not ogrenci:
+        raise HTTPException(status_code=404, detail="Bu numaraya ait bir kullanıcı bulunamadı.")
+    
+    if ogrenci.rol != "öğrenci":
+        raise HTTPException(status_code=400, detail="Eklemeye çalıştığınız kişi bir öğrenci değil.")
+        
+    # 2. Zaten ekli mi diye kontrol et
+    mevcut_baglanti = db.query(OgretmenOgrenciLink).filter(
+        OgretmenOgrenciLink.ogretmenId == req.ogretmenId,
+        OgretmenOgrenciLink.ogrenciId == ogrenci.uid
+    ).first()
+    
+    if mevcut_baglanti:
+        raise HTTPException(status_code=400, detail="Bu öğrenci zaten listenizde ekli.")
+        
+    # 3. Bağlantıyı kur ve kaydet
+    yeni_baglanti = OgretmenOgrenciLink(ogretmenId=req.ogretmenId, ogrenciId=ogrenci.uid)
+    db.add(yeni_baglanti)
+    db.commit()
+    
+    return {"message": f"{ogrenci.adSoyad} başarıyla öğrencilerinize eklendi!", "ogrenciAdi": ogrenci.adSoyad}
+
+@app.get("/ogrencilerim")
+def ogrencilerimi_getir(ogretmen_id: str, db: Session = Depends(get_db)):
+    # 1. Öğretmenin bağlantılı olduğu öğrenci ID'lerini bul
+    baglantilar = db.query(OgretmenOgrenciLink).filter(OgretmenOgrenciLink.ogretmenId == ogretmen_id).all()
+    
+    if not baglantilar:
+        return []
+        
+    ogrenci_idleri = [b.ogrenciId for b in baglantilar]
+    
+    # 2. O ID'lere sahip kullanıcıların bilgilerini getir
+    ogrenciler = db.query(UserTable).filter(UserTable.uid.in_(ogrenci_idleri)).all()
+    
+    # Şifre gibi kritik bilgileri dışarı sızdırmadan sadece gerekenleri döndürüyoruz
+    return [{"uid": o.uid, "adSoyad": o.adSoyad, "telefon": o.telefon} for o in ogrenciler]
+
+# --------------------------------
 
 @app.put("/lessons/{lesson_id}")
 def update_lesson(lesson_id: int, updated_data: dict, db: Session = Depends(get_db)):
@@ -149,7 +212,6 @@ def update_lesson(lesson_id: int, updated_data: dict, db: Session = Depends(get_
     
     for key, value in updated_data.items():
         if hasattr(db_lesson, key):
-            # Tarih string gelirse datetime'a çevir
             if key == "tarih" and isinstance(value, str):
                 value = datetime.fromisoformat(value)
             setattr(db_lesson, key, value)
