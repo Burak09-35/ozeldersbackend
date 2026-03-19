@@ -17,7 +17,6 @@ class _GiriisEkraniState extends State<GiriisEkrani> {
     final email = _emailController.text.trim();
     final sifre = _sifreController.text.trim();
 
-    // 1. BURADA ASLA FirebaseAuth KODU OLMAMALI!
     try {
       final response = await http.post(
         Uri.parse('http://localhost:8000/login'),
@@ -31,14 +30,16 @@ class _GiriisEkraniState extends State<GiriisEkrani> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Kullanıcı bilgilerini telefona kaydet
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_id', data['user']['uid']);
         await prefs.setString('user_role', data['user']['rol']);
         await prefs.setString('user_name', data['user']['adSoyad']);
 
+        // YENİ: Telefon numarasını da hafızaya alıyoruz
+        await prefs.setString('user_telefon', data['user']['telefon']);
+
         print("KAYDEDİLEN ID: ${data['user']['uid']}");
-        print("KAYDEDİLEN ISIM: ${data['user']['adSoyad']}");
+        print("KAYDEDİLEN ROL: ${data['user']['rol']}");
 
         Navigator.pushReplacementNamed(context, '/anaMenu');
       } else {
@@ -48,9 +49,9 @@ class _GiriisEkraniState extends State<GiriisEkrani> {
         );
       }
     } catch (e) {
-      print("DETAYLI HATA: $e"); // Konsola bunu yazdır ki görelim
+      print("DETAYLI HATA: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Bağlantı hatası!")),
+        const SnackBar(content: Text("Bağlantı hatası! Sunucu çalışıyor mu?")),
       );
     }
   }

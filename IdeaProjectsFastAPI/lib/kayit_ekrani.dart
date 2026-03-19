@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // KRİTİK: Bunu eklemelisin
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -11,11 +9,11 @@ class KayitEkrani extends StatefulWidget {
 }
 
 class _KayitEkraniState extends State<KayitEkrani> {
-  final _adController = TextEditingController(); // Yeni: İsim için
+  final _adController = TextEditingController();
   final _emailController = TextEditingController();
+  final _telefonController = TextEditingController(); // YENİ: Telefon numarasını alacağımız kontrolcü
   final _sifreController = TextEditingController();
 
-  // Varsayılan rol 'öğretmen' olsun
   String _secilenRol = 'öğretmen';
 
   void _kayitOl() async {
@@ -26,19 +24,24 @@ class _KayitEkraniState extends State<KayitEkrani> {
         body: jsonEncode({
           'adSoyad': _adController.text.trim(),
           'email': _emailController.text.trim(),
+          'telefon': _telefonController.text.trim(), // YENİ: Backend'e telefonu yolluyoruz
           'password': _sifreController.text.trim(),
           'rol': _secilenRol,
         }),
       );
 
       if (response.statusCode == 200) {
-        Navigator.pushReplacementNamed(context, '/anaMenu');
+        // DÜZELTME: Kayıt başarılıysa kullanıcıyı giriş ekranına yönlendiriyoruz ki bilgileri tam çekilsin
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Kayıt başarılı! Lütfen giriş yapınız."), backgroundColor: Colors.green)
+        );
+        Navigator.pop(context); // Kayıt ekranını kapatıp Giriş ekranına geri döndürür
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['detail'])));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayit sirasinda hata olustu!")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt sırasında hata oluştu!")));
     }
   }
 
@@ -52,13 +55,20 @@ class _KayitEkraniState extends State<KayitEkrani> {
           child: Column(
             children: [
               TextField(controller: _adController, decoration: const InputDecoration(labelText: "Ad Soyad")),
-              TextField(controller: _emailController, decoration: const InputDecoration(labelText: "E-posta")),
+              TextField(controller: _emailController, decoration: const InputDecoration(labelText: "E-posta"), keyboardType: TextInputType.emailAddress),
+
+              // YENİ EKLENEN TELEFON KUTUSU
+              TextField(
+                controller: _telefonController,
+                decoration: const InputDecoration(labelText: "Telefon Numarası (Örn: 05xx...)"),
+                keyboardType: TextInputType.phone, // Klavyeyi numaratör olarak açar
+              ),
+
               TextField(controller: _sifreController, decoration: const InputDecoration(labelText: "Şifre"), obscureText: true),
 
               const SizedBox(height: 20),
               const Text("Uygulamayı ne olarak kullanacaksınız?"),
 
-              // ROL SEÇİMİ (Basit bir Dropdown)
               DropdownButton<String>(
                 value: _secilenRol,
                 isExpanded: true,
