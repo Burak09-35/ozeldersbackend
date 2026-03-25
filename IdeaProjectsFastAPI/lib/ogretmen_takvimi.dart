@@ -123,7 +123,7 @@ class _DersEklePenceresiState extends State<_DersEklePenceresi> {
       final ogretmenId = prefs.getString('user_id');
       if (ogretmenId == null) return;
 
-      final response = await http.get(Uri.parse('http://localhost:8000/ogrencilerim?ogretmen_id=$ogretmenId'));
+      final response = await http.get(Uri.parse('http://10.234.204.5:8000/ogrencilerim?ogretmen_id=$ogretmenId'));
 
       if (response.statusCode == 200) {
         setState(() {

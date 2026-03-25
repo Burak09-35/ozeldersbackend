@@ -30,7 +30,7 @@ class _OgrenciListesiSayfasiState extends State<OgrenciListesiSayfasi> {
       if (ogretmenId == null) return;
 
       final response = await http.get(
-        Uri.parse('http://localhost:8000/ogrencilerim?ogretmen_id=$ogretmenId'),
+        Uri.parse('http://10.234.204.5:8000/ogrencilerim?ogretmen_id=$ogretmenId'),
       );
 
       if (response.statusCode == 200) {
@@ -56,7 +56,7 @@ class _OgrenciListesiSayfasiState extends State<OgrenciListesiSayfasi> {
       if (ogretmenId == null) return;
 
       final response = await http.post(
-        Uri.parse('http://localhost:8000/ogrenci_ekle'),
+        Uri.parse('http://10.234.204.5:8000/ogrenci_ekle'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'ogretmenId': ogretmenId,

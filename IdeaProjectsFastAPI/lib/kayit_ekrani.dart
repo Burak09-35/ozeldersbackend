@@ -19,7 +19,7 @@ class _KayitEkraniState extends State<KayitEkrani> {
   void _kayitOl() async {
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8000/register'),
+        Uri.parse('http://10.234.204.5:8000/register'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'adSoyad': _adController.text.trim(),
