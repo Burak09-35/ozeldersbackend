@@ -36,73 +36,153 @@ class _AnaMenuState extends State<AnaMenu> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userName = prefs.getString('user_name') ?? "Kullanıcı";
-      // Rol bilgisini hafızadan çekiyoruz, kayıt ekranında bunu set etmemiz gerekecek
       userRole = prefs.getString('user_role') ?? "öğrenci";
     });
   }
 
+  // --- ÇIKIŞ YAP FONKSİYONU ---
+  void _cikisYap() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Hafızadaki tüm kullanıcı verilerini sil
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/'); // Giriş ekranına dön
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Tema renklerine kolay erişim
+    final colorScheme = Theme.of(context).colorScheme;
 
     // --- KAVŞAK MANTIĞI (ROUTER) ---
-    // Kullanıcının rolüne göre gideceği takvim sayfasını önceden belirliyoruz.
     Widget gidecegiTakvimSayfasi = (userRole == "öğretmen")
-        ? OgretmenTakvimi()
+        ? const OgretmenTakvimi()
         : const OgrenciTakvimi();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      // Arka planı main.dart'a bıraktık (scaffoldBackgroundColor)
       appBar: AppBar(
-        title: Text("Hoş geldin, $userName"),
-        centerTitle: true,
+        title: const Text("Özel Ders Asistanı"),
+        // Çıkış Yap Butonu
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Çıkış Yap',
+            onPressed: _cikisYap,
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // 1. TAKVİM BUTONU (Herkes görür ama herkes farklı yere gider)
-            _menuButon(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- KARŞILAMA MESAJI ---
+              Text(
+                "Merhaba, $userName",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary, // Antrasit
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                userRole == "öğretmen"
+                    ? "İşte bugünkü ders programın ve öğrencilerin."
+                    : "İşte yaklaşan ders programın.",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 32), // Kartlardan önce nefes alma boşluğu
+
+              // 1. TAKVİM BUTONU (Herkes görür ama herkes farklı yere gider)
+              _modernMenuKart(
                 context,
                 "Ders Programım",
-                Icons.calendar_today,
-                Colors.indigo,
-                gidecegiTakvimSayfasi // Kavşak değişkenimizi buraya verdik
-            ),
+                "Yaklaşan ve geçmiş derslerinizi yönetin",
+                Icons.calendar_month_outlined,
+                gidecegiTakvimSayfasi,
+              ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-            // 2. ÖĞRENCİ LİSTESİ BUTONU (Sadece Öğretmenler Görür)
-            // Dart dilindeki bu efsanevi 'if' kullanımı sayesinde widget'ı tamamen gizliyoruz
-            if (userRole == "öğretmen")
-              _menuButon(
+              // 2. ÖĞRENCİ LİSTESİ BUTONU (Sadece Öğretmenler Görür)
+              if (userRole == "öğretmen")
+                _modernMenuKart(
                   context,
                   "Öğrencilerim",
-                  Icons.people,
-                  Colors.orange,
-                  const OgrenciListesiSayfasi()
-              ),
-          ],
+                  "Öğrenci listenizi görüntüleyin ve yönetin",
+                  Icons.people_outline,
+                  const OgrenciListesiSayfasi(),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _menuButon(BuildContext context, String baslik, IconData ikon, Color renk, Widget sayfa) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => sayfa)),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: renk,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: renk.withOpacity(0.3), blurRadius: 10)],
-        ),
-        child: Row(
-          children: [
-            Icon(ikon, color: Colors.white, size: 40),
-            const SizedBox(width: 20),
-            Text(baslik, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
+  // --- YENİ, PROFESYONEL MENÜ KARTI ---
+  Widget _modernMenuKart(BuildContext context, String baslik, String altBaslik, IconData ikon, Widget sayfa) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200), // İnce zarif bir kenarlık
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => sayfa)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              // İkonun arkasındaki soft renkli hale
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.secondary.withOpacity(0.1), // Soft mavi arka plan
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(ikon, color: colorScheme.secondary, size: 28), // Soft mavi ikon
+              ),
+              const SizedBox(width: 20),
+
+              // Başlıklar
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      baslik,
+                      style: TextStyle(
+                          color: colorScheme.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      altBaslik,
+                      style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 13
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // İleri Oku
+              Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade400, size: 18),
+            ],
+          ),
         ),
       ),
     );

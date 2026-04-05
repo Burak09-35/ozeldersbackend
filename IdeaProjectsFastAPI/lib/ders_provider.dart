@@ -65,8 +65,8 @@ class Ders {
 
 // --- DERS PROVIDER ---
 class DersProvider with ChangeNotifier {
-  // Chrome testi için 10.234.204.5, Emülatör için 10.0.2.2 kullanmalısın
-  final String _baseUrl = "http://10.234.204.5:8000";
+  // Chrome testi için localhost, Emülatör için 10.0.2.2 kullanmalısın
+  final String _baseUrl = "http://localhost:5000";
 
   // Verileri tarih bazlı gruplandırarak tutuyoruz
   Map<DateTime, List<Ders>> _dersler = {};

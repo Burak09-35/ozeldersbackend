@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'ders_provider.dart';
+import 'custom_time_picker.dart'; // YENİ EKLENEN IMPORT
 
 class DersDetaySayfasi extends StatefulWidget {
   final Ders ders;
@@ -17,8 +18,8 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
   late TextEditingController _konuController;
   late bool _odemeAlindi;
   late bool _katilimTamamlandi;
-  int? _secilenSaat;
-  int? _secilenDakika;
+  late int _secilenSaat;
+  late int _secilenDakika;
 
   @override
   void initState() {
@@ -31,9 +32,26 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
     _secilenDakika = widget.ders.dakika;
   }
 
+  // --- YENİ SAAT SEÇİCİ FONKSİYONU ---
+  void _modernSaatSecici(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return WatchStyleTimePicker(
+          initialTime: TimeOfDay(hour: _secilenSaat, minute: _secilenDakika),
+          onTimeSelected: (TimeOfDay newTime) {
+            setState(() {
+              _secilenSaat = newTime.hour;
+              _secilenDakika = newTime.minute;
+            });
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Provider'ı burada tanımlıyoruz
     final dersProv = Provider.of<DersProvider>(context, listen: false);
 
     return Scaffold(
@@ -52,11 +70,34 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
               decoration: const InputDecoration(labelText: "Konu"),
             ),
             const SizedBox(height: 20),
-            ListTile(
-              title: Text("Ders Saati: ${_secilenSaat}:${_secilenDakika.toString().padLeft(2, '0')}"),
-              trailing: const Icon(Icons.access_time),
-              onTap: () => _saatSecici(context),
+
+            // SAAT GÖSTERİM ALANI (Modernleştirilmiş)
+            InkWell(
+              onTap: () => _modernSaatSecici(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(5), // Tasarım bütünlüğü için değiştirildi
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Ders Saati: ${_secilenSaat.toString().padLeft(2, '0')}:${_secilenDakika.toString().padLeft(2, '0')}",
+                      style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold
+                      ),
+                    ),
+                    const Icon(Icons.timer_outlined, color: Colors.indigo), // Takvimle uyumlu ikon ve renk
+                  ],
+                ),
+              ),
             ),
+
+            const SizedBox(height: 10),
             SwitchListTile(
               title: const Text("Katılım Tamamlandı"),
               subtitle: const Text("Öğrenci derse geldi mi?"),
@@ -77,7 +118,6 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                // DÜZELTME: dersGuncelle artık sadece 2 parametre alıyor: ID ve DATA
                 await dersProv.dersGuncelle(
                     widget.ders.id!,
                     {
@@ -100,19 +140,5 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
         ),
       ),
     );
-  }
-
-  // Saat seçiciyi biraz daha gerçekçi yapalım
-  Future<void> _saatSecici(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: _secilenSaat!, minute: _secilenDakika!),
-    );
-    if (picked != null) {
-      setState(() {
-        _secilenSaat = picked.hour;
-        _secilenDakika = picked.minute;
-      });
-    }
   }
 }
