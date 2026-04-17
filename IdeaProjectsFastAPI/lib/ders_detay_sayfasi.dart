@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'ders_provider.dart';
-import 'custom_time_picker.dart'; // YENİ EKLENEN IMPORT
+import 'custom_time_picker.dart';
 
 class DersDetaySayfasi extends StatefulWidget {
   final Ders ders;
@@ -32,7 +32,6 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
     _secilenDakika = widget.ders.dakika;
   }
 
-  // --- YENİ SAAT SEÇİCİ FONKSİYONU ---
   void _modernSaatSecici(BuildContext context) {
     showDialog(
       context: context,
@@ -53,88 +52,118 @@ class _DersDetaySayfasiState extends State<DersDetaySayfasi> {
   @override
   Widget build(BuildContext context) {
     final dersProv = Provider.of<DersProvider>(context, listen: false);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(title: const Text("Ders Detayı")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // main.dart'taki temiz textfield tasarımı devreye girer
             TextField(
               controller: _adController,
-              decoration: const InputDecoration(labelText: "Öğrenci Adı"),
+              decoration: const InputDecoration(
+                labelText: "Öğrenci Adı",
+                prefixIcon: Icon(Icons.person_outline),
+              ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _konuController,
-              decoration: const InputDecoration(labelText: "Konu"),
+              decoration: const InputDecoration(
+                labelText: "Konu",
+                prefixIcon: Icon(Icons.menu_book_outlined),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // SAAT GÖSTERİM ALANI (Modernleştirilmiş)
+            // SAAT GÖSTERİM ALANI (Premium Tasarım)
             InkWell(
               onTap: () => _modernSaatSecici(context),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(5), // Tasarım bütünlüğü için değiştirildi
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "Ders Saati: ${_secilenSaat.toString().padLeft(2, '0')}:${_secilenDakika.toString().padLeft(2, '0')}",
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 16,
-                          color: Colors.black,
+                          color: colorScheme.primary,
                           fontWeight: FontWeight.bold
                       ),
                     ),
-                    const Icon(Icons.timer_outlined, color: Colors.indigo), // Takvimle uyumlu ikon ve renk
+                    Icon(Icons.access_time_filled, color: colorScheme.secondary),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 10),
-            SwitchListTile(
-              title: const Text("Katılım Tamamlandı"),
-              subtitle: const Text("Öğrenci derse geldi mi?"),
-              value: _katilimTamamlandi,
-              onChanged: (v) => setState(() => _katilimTamamlandi = v),
-            ),
-            SwitchListTile(
-              title: const Text("Ödeme Alındı"),
-              subtitle: const Text("Ders ücreti ödendi mi?"),
-              value: _odemeAlindi,
-              onChanged: (v) => setState(() => _odemeAlindi = v),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                await dersProv.dersGuncelle(
-                    widget.ders.id!,
-                    {
-                      'ogrenciAdi': _adController.text,
-                      'konu': _konuController.text,
-                      'odemeAlindi': _odemeAlindi,
-                      'katilimTamamlandi': _katilimTamamlandi,
-                      'saat': _secilenSaat,
-                      'dakika': _secilenDakika,
-                    }
-                );
+            const SizedBox(height: 24),
 
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text("Değişiklikleri Kaydet"),
+            // KART İÇİNDE DURUM YÖNETİMİ
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: Text("Katılım Tamamlandı", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                    subtitle: Text("Öğrenci derse geldi mi?", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    activeColor: Colors.green,
+                    value: _katilimTamamlandi,
+                    onChanged: (v) => setState(() => _katilimTamamlandi = v),
+                    secondary: Icon(Icons.check_circle_outline, color: _katilimTamamlandi ? Colors.green : Colors.grey),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    title: Text("Ödeme Alındı", style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                    subtitle: Text("Ders ücreti ödendi mi?", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    activeColor: colorScheme.secondary,
+                    value: _odemeAlindi,
+                    onChanged: (v) => setState(() => _odemeAlindi = v),
+                    secondary: Icon(Icons.payments_outlined, color: _odemeAlindi ? colorScheme.secondary : Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // KAYDET BUTONU
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                // Buton stili artık main.dart'tan geliyor
+                onPressed: () async {
+                  await dersProv.dersGuncelle(
+                      widget.ders.id!,
+                      {
+                        'ogrenciAdi': _adController.text,
+                        'konu': _konuController.text,
+                        'odemeAlindi': _odemeAlindi,
+                        'katilimTamamlandi': _katilimTamamlandi,
+                        'saat': _secilenSaat,
+                        'dakika': _secilenDakika,
+                      }
+                  );
+
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text("Değişiklikleri Kaydet"),
+              ),
             )
           ],
         ),

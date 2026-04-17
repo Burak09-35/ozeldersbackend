@@ -22,7 +22,7 @@ class _GiriisEkraniState extends State<GiriisEkrani> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:5000/login'),
+        Uri.parse('http://10.188.226.5:8080/login'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': email,

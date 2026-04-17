@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart'; // YENİ: Yazı tipi paketi eklendi
+import 'package:google_fonts/google_fonts.dart';
 
-// Kendi sayfaların
 import 'giris_ekrani.dart';
 import 'kayit_ekrani.dart';
 import 'ana_menu.dart';
 import 'ders_provider.dart';
 
 void main() {
-  // Firebase.initializeApp kısmını sildik çünkü FastAPI kullanacağız
   WidgetsFlutterBinding.ensureInitialized();
-
   runApp(
     MultiProvider(
       providers: [
@@ -30,42 +27,40 @@ class OzelDersUygulamasi extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
-
-      // --- YENİ PROFESYONEL TEMAMIZ ---
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Göz yormayan arka plan
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
 
-        // Renk Paleti
         colorScheme: const ColorScheme.light(
-          primary: Color(0xFF1E293B), // Derin Antrasit (Ana Renk)
-          secondary: Color(0xFF3B82F6), // Soft Mavi (Vurgu Rengi)
-          surface: Colors.white, // Kart ve menü arkaplanları
-          onPrimary: Colors.white, // Ana renk üzerindeki yazılar
-          onSurface: Color(0xFF334155), // Beyaz üzerindeki yazılar (Koyu Gri)
+          primary: Color(0xFF1E293B),
+          secondary: Color(0xFF3B82F6),
+          surface: Colors.white,
+          onPrimary: Colors.white,
+          onSurface: Color(0xFF334155),
         ),
 
-        // Tipografi (Poppins)
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme).apply(
           bodyColor: const Color(0xFF334155),
           displayColor: const Color(0xFF1E293B),
         ),
 
-        // AppBar (Üst Menü) Tasarımı
+        // --- İŞTE SİHİRLİ DOKUNUŞ BURADA ---
+        // Tüm projedeki App Barları ferah ve arka planla uyumlu hale getirdik!
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E293B),
-          foregroundColor: Colors.white,
-          elevation: 0,
+          backgroundColor: Colors.transparent, // Arka planı şeffaf yaptık
+          foregroundColor: Color(0xFF1E293B), // İkonlar ve yazı rengi Antrasit oldu
+          elevation: 0, // Ağır gölgeyi kaldırdık
           centerTitle: true,
           titleTextStyle: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            color: Color(0xFF1E293B), // Başlık rengi Antrasit
             letterSpacing: 0.5,
           ),
-          iconTheme: IconThemeData(color: Colors.white),
+          iconTheme: IconThemeData(color: Color(0xFF1E293B)), // Geri okları vb. Antrasit
         ),
+        // ------------------------------------
 
-        // Buton Tasarımı
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF3B82F6),
@@ -83,14 +78,12 @@ class OzelDersUygulamasi extends StatelessWidget {
           ),
         ),
 
-        // Floating Action Button Tasarımı (Örn: Ders Ekleme butonu)
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFF3B82F6),
           foregroundColor: Colors.white,
           elevation: 3,
         ),
 
-        // TextField (Girdi Alanı) Tasarımı
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -110,7 +103,6 @@ class OzelDersUygulamasi extends StatelessWidget {
           labelStyle: const TextStyle(color: Color(0xFF64748B)),
         ),
       ),
-      // ---------------------------------
 
       routes: {
         '/': (context) => const GiriisEkrani(),

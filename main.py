@@ -1,26 +1,34 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional
+import os
 
-# 1. VERİTABANI AYARLARI (SQLite)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./ozelders.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# --- 1. VERİTABANI AYARLARI (Bulut Uyumlu) ---
+# Render veya Koyeb'e yüklediğimizde sistem kendi 'DATABASE_URL' adresini kullanacak.
+# Senin bilgisayarındayken ise aşağıdaki Neon linkini kullanacak.
+NEON_LINK = "postgresql://neondb_owner:npg_WAnoRD3GYQu4@ep-spring-fire-alwr55p7-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", NEON_LINK)
+
+# SQLAlchemy 'postgres://' sevmez, onu düzeltiyoruz (Bulut sunucuları bazen eski tip link verir)
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 2. VERİTABANI MODELLERİ (SQLAlchemy)
+# --- 2. VERİTABANI MODELLERİ ---
 class UserTable(Base):
     __tablename__ = "users"
     uid = Column(String, primary_key=True, index=True)
     adSoyad = Column(String)
     email = Column(String, unique=True)
-    telefon = Column(String, unique=True, index=True) # YENİ EKLENDİ
-    rol = Column(String)  # öğretmen / öğrenci
+    telefon = Column(String, unique=True, index=True)
+    rol = Column(String)
     password = Column(String)
 
 class LessonTable(Base):
@@ -37,16 +45,16 @@ class LessonTable(Base):
     odemeAlindi = Column(Boolean, default=False)
     katilimTamamlandi = Column(Boolean, default=False)
 
-# YENİ EKLENEN KÖPRÜ TABLO (Öğretmen-Öğrenci İlişkisi)
 class OgretmenOgrenciLink(Base):
     __tablename__ = "ogretmen_ogrenci_link"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     ogretmenId = Column(String, index=True)
     ogrenciId = Column(String, index=True)
 
+# Tabloları veritabanında oluştur (sadece ilk çalışmada tabloları kurar, sonra dokunmaz)
 Base.metadata.create_all(bind=engine)
 
-# 3. PYDANTIC MODELLERİ (Veri Transferi İçin)
+# --- 3. PYDANTIC MODELLERİ ---
 class LessonCreate(BaseModel):
     ogretmenId: str
     ogretmenAdi: str
@@ -67,8 +75,8 @@ class LessonResponse(LessonCreate):
 class UserCreate(BaseModel):
     adSoyad: str
     email: str
-    telefon: str # YENİ EKLENDİ
-    password: str # Gerçek projede bu hash'lenmeli!
+    telefon: str
+    password: str
     rol: str
 
 class LoginRequest(BaseModel):
@@ -79,7 +87,7 @@ class OgrenciEkleRequest(BaseModel):
     ogretmenId: str
     ogrenciTelefon: str
 
-# 4. FASTAPI BAŞLATMA
+# --- 4. FASTAPI BAŞLATMA ---
 app = FastAPI()
 
 app.add_middleware(
@@ -90,7 +98,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# DB Bağlantısı Yardımcısı
 def get_db():
     db = SessionLocal()
     try:
@@ -98,14 +105,17 @@ def get_db():
     finally:
         db.close()
 
-# 5. ENDPOINTLER (API Uç Noktaları)
+# --- 5. ENDPOINTLER ---
+
+@app.get("/")
+def home():
+    return {"message": "Ozel Ders API Sorunsuz Calisiyor!"}
 
 @app.get("/lessons")
 def get_lessons(user_id: str, db: Session = Depends(get_db)):
-    lessons = db.query(LessonTable).filter(
+    return db.query(LessonTable).filter(
         (LessonTable.ogretmenId == user_id) | (LessonTable.ogrenciId == user_id)
     ).all()
-    return lessons
 
 @app.post("/lessons", response_model=LessonResponse)
 def create_lesson(lesson: LessonCreate, db: Session = Depends(get_db)):
@@ -117,13 +127,9 @@ def create_lesson(lesson: LessonCreate, db: Session = Depends(get_db)):
 
 @app.post("/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    # Hem email hem de telefon benzersiz olmalı
-    db_user_email = db.query(UserTable).filter(UserTable.email == user.email).first()
-    if db_user_email:
+    if db.query(UserTable).filter(UserTable.email == user.email).first():
         raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
-        
-    db_user_tel = db.query(UserTable).filter(UserTable.telefon == user.telefon).first()
-    if db_user_tel:
+    if db.query(UserTable).filter(UserTable.telefon == user.telefon).first():
         raise HTTPException(status_code=400, detail="Bu telefon numarası zaten kayıtlı")
     
     new_user = UserTable(
@@ -136,86 +142,45 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     )
     db.add(new_user)
     db.commit()
-    db.refresh(new_user)
     return {"message": "Kayıt başarılı", "uid": new_user.uid}
 
 @app.post("/login")
 def login_user(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(UserTable).filter(UserTable.email == req.email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-    if user.password != req.password:
-        raise HTTPException(status_code=401, detail="Hatalı şifre")
-    
-    return {
-        "message": "Giriş başarılı",
-        "user": {
-            "uid": user.uid,
-            "adSoyad": user.adSoyad,
-            "rol": user.rol,
-            "telefon": user.telefon
-        }
-    }
-
-# --- YENİ EKLENEN ENDPOINTLER ---
+    if not user or user.password != req.password:
+        raise HTTPException(status_code=401, detail="Hatalı giriş")
+    return {"message": "Giriş başarılı", "user": {"uid": user.uid, "adSoyad": user.adSoyad, "rol": user.rol}}
 
 @app.post("/ogrenci_ekle")
 def ogrenci_ekle(req: OgrenciEkleRequest, db: Session = Depends(get_db)):
-    # 1. Telefon numarasından öğrenciyi bul
     ogrenci = db.query(UserTable).filter(UserTable.telefon == req.ogrenciTelefon).first()
+    if not ogrenci or ogrenci.rol != "öğrenci":
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
     
-    if not ogrenci:
-        raise HTTPException(status_code=404, detail="Bu numaraya ait bir kullanıcı bulunamadı.")
-    
-    if ogrenci.rol != "öğrenci":
-        raise HTTPException(status_code=400, detail="Eklemeye çalıştığınız kişi bir öğrenci değil.")
-        
-    # 2. Zaten ekli mi diye kontrol et
-    mevcut_baglanti = db.query(OgretmenOgrenciLink).filter(
-        OgretmenOgrenciLink.ogretmenId == req.ogretmenId,
-        OgretmenOgrenciLink.ogrenciId == ogrenci.uid
+    mevcut = db.query(OgretmenOgrenciLink).filter(
+        OgretmenOgrenciLink.ogretmenId == req.ogretmenId, OgretmenOgrenciLink.ogrenciId == ogrenci.uid
     ).first()
-    
-    if mevcut_baglanti:
-        raise HTTPException(status_code=400, detail="Bu öğrenci zaten listenizde ekli.")
+    if mevcut:
+        raise HTTPException(status_code=400, detail="Zaten ekli")
         
-    # 3. Bağlantıyı kur ve kaydet
-    yeni_baglanti = OgretmenOgrenciLink(ogretmenId=req.ogretmenId, ogrenciId=ogrenci.uid)
-    db.add(yeni_baglanti)
+    db.add(OgretmenOgrenciLink(ogretmenId=req.ogretmenId, ogrenciId=ogrenci.uid))
     db.commit()
-    
-    return {"message": f"{ogrenci.adSoyad} başarıyla öğrencilerinize eklendi!", "ogrenciAdi": ogrenci.adSoyad}
+    return {"message": f"{ogrenci.adSoyad} eklendi"}
 
 @app.get("/ogrencilerim")
 def ogrencilerimi_getir(ogretmen_id: str, db: Session = Depends(get_db)):
-    # 1. Öğretmenin bağlantılı olduğu öğrenci ID'lerini bul
     baglantilar = db.query(OgretmenOgrenciLink).filter(OgretmenOgrenciLink.ogretmenId == ogretmen_id).all()
-    
-    if not baglantilar:
-        return []
-        
-    ogrenci_idleri = [b.ogrenciId for b in baglantilar]
-    
-    # 2. O ID'lere sahip kullanıcıların bilgilerini getir
-    ogrenciler = db.query(UserTable).filter(UserTable.uid.in_(ogrenci_idleri)).all()
-    
-    # Şifre gibi kritik bilgileri dışarı sızdırmadan sadece gerekenleri döndürüyoruz
-    return [{"uid": o.uid, "adSoyad": o.adSoyad, "telefon": o.telefon} for o in ogrenciler]
-
-# --------------------------------
+    ids = [b.ogrenciId for b in baglantilar]
+    return db.query(UserTable).filter(UserTable.uid.in_(ids)).all()
 
 @app.put("/lessons/{lesson_id}")
 def update_lesson(lesson_id: int, updated_data: dict, db: Session = Depends(get_db)):
     db_lesson = db.query(LessonTable).filter(LessonTable.id == lesson_id).first()
-    if not db_lesson:
-        raise HTTPException(status_code=404, detail="Ders bulunamadı")
-    
+    if not db_lesson: raise HTTPException(status_code=404, detail="Ders yok")
     for key, value in updated_data.items():
         if hasattr(db_lesson, key):
-            if key == "tarih" and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+            if key == "tarih" and isinstance(value, str): value = datetime.fromisoformat(value)
             setattr(db_lesson, key, value)
-    
     db.commit()
     return {"message": "Güncellendi"}
 
@@ -226,3 +191,11 @@ def delete_lesson(lesson_id: int, db: Session = Depends(get_db)):
         db.delete(db_lesson)
         db.commit()
     return {"message": "Silindi"}
+
+# --- 6. ÇALIŞTIRMA AYARI (Dinamik Port) ---
+if __name__ == "__main__":
+    import uvicorn
+    # En önemli kısım: Bulut sunucusu kendi portunu 'PORT' değişkeniyle yollar.
+    # Eğer o değişken yoksa (kendi bilgisayarındaysan), varsayılan olarak 5000 portunu kullanır.
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
